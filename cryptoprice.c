@@ -13,7 +13,7 @@ char *currency_lower = "usd";
 char *defaultcoin = "bitcoin";
 
 int writemode = 0;
-const char *writemodes[] = { "simple", "human" };
+const char *writemodes[] = { "humanreadable", "simple" };
 const int maxwritemode = 1;
 
 const char *argp_program_bug_address = "@bowdens [github]";
@@ -73,6 +73,7 @@ int print_price(char *json, char *coin){
         if(pos == NULL) {
             return 2;
         }
+        fprintf(stderr,"Warning: Currency '%s' not supported. Defaulting to USD.\n",currency);
         pos += strlen("\"price_usd\": \"");
         price_str = strdup(pos);
         price_str[PRICELEN] = '\0';
@@ -115,12 +116,12 @@ int print_price(char *json, char *coin){
 
     switch(writemode){
         case 0:
-            //simple
-            printf("%lf\n",price);
-            break;
-        case 1:
             //human
             printf("1 %s = %.2lf %s\n",symb, price, found_curr?currency:"USD");
+            break;
+        case 1:
+            //simple
+            printf("%lf\n",price);
             break;
     }
     return 0;
@@ -224,6 +225,9 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
         case 777:
             free(currency);
             currency = strdup(arg);
+            for(int i = 0; i < strlen(currency); i ++){
+                currency[i] = toupper(currency[i]);
+            }
             copy_to_lower(currency_lower, currency);
             write_settings(settings_path);
             break;
