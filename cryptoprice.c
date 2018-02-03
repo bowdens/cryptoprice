@@ -3,11 +3,14 @@
 #include <string.h>
 #include <argp.h>
 #include <curl/curl.h>
-#include "jsmn/jsmn.h"
 
 #define PRICELEN 8
 
 char *settings_path = ".cryptoprice_settings";
+
+char *currency = "USD";
+char *currency_lower = "usd";
+char *defaultcoin = "bitcoin";
 
 int writemode = 0;
 const char *writemodes[] = { "simple", "human" };
@@ -16,15 +19,6 @@ const int maxwritemode = 1;
 const char *argp_program_bug_address = "@bowdens [github]";
 const char *argp_program_version = "cryptoprice 0.1";
 
-static const char *JSON_STRING =
-    "[\n\t{\n\t\t\"id\": \"id\",\n\t\t\"name\": \"name\",\n\t\t\"symbol\": \"symb\",\n\t\t\"rank\": \"30\",\n\t\t\"price_usd\": \"28.2435\",\n\t\t\"price_btc\": \"0.00314476\",\n\t\t\"24h_volume_usd\": 23344300.0\",\n\t\t\"market_cap_usd\": \"70\",\n\t\t\"available_supply\": \"1234\",\n\t\t\"total_supply\": \"123\",\n\t\t\"max_supply\": \"123\",\n\t\t\"percent_change_1h\": \"4.44\",\n\t\t\"percent_change_24h\": \"41.09\",\n\t\t\"percent_change_7d\": \"-23.00\",\n\t\t\"last_updated\": \"123123123\"\n\t}\n]";
-
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
-    if(tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start && strncmp(json + tok->start, s, tok->end - tok->start) == 0){
-        return 0;
-    }
-    return -1;
-}
 
 void copy_to_lower(char *str, char *tocopy) {
     free(str);
@@ -35,8 +29,6 @@ void copy_to_lower(char *str, char *tocopy) {
     }
 }
 
-char *currency = "USD";
-char *currency_lower = "usd";
 
 int read_settings(char*);
 int write_settings(char *);
@@ -153,7 +145,7 @@ int get_price(char *coin, char *curr){
 
     curl = curl_easy_init();
     if(!curl){
-        printf("there was an error fetching the price\n");
+        printf("ERROR: Error initialising curl handle\n");
     }
 
     if((res = curl_easy_setopt(curl, CURLOPT_URL, url) != CURLE_OK)) {
@@ -173,7 +165,7 @@ int get_price(char *coin, char *curr){
     res = curl_easy_perform(curl);
 
     if(res != CURLE_OK){
-        fprintf(stderr, "price could not be fetched: %s\n",curl_easy_strerror(res));
+        fprintf(stderr, "ERROR: price could not be fetched: %s\n",curl_easy_strerror(res));
     }
 
     //printf("%lu bytes retreived\n", (long)chunk.size);
@@ -212,6 +204,7 @@ void set_writemode(char *_writemode){
 }
 
 static int parse_opt(int key, char *arg, struct argp_state *state) {
+    //printf("parse opt called (key = %d). state->arg_num = %d\n",key,state->arg_num);
     switch(key){
         case 'e':
             get_price("ethereum", currency);
@@ -249,6 +242,20 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
                 parse_opt(1000, arg, state);
             }
             break;
+        case 1001:
+            free(defaultcoin);
+            defaultcoin = strdup(arg);
+            write_settings(settings_path);
+            break;
+        case 1002:
+            printf("%s\n",defaultcoin);
+            break;
+        case ARGP_KEY_ARG:
+            get_price(arg, currency);
+            break;
+        case ARGP_KEY_NO_ARGS:
+            if(arg == NULL) get_price(defaultcoin,currency);
+            break;
     };
     return 0;
 }
@@ -265,6 +272,8 @@ struct argp_option options[] = {
     { "cc", 888, 0, 0, "check the current currency" },
     { "writemode", 999, "WRITEMODE", 0, "change the default writemode" },
     { "cwm", 1000, 0, 0, "check the current writemode" },
+    { "defaultcoin", 1001, "COIN", 0, "change the default coin (displayed when no arguments are given)" },
+    { "cdc", 1002, 0, 0, "check the default coin" },
     { 0 }
 };
 
@@ -279,6 +288,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     argp_parse(&argp, argc, argv, 0, 0, 0);
+
     if(write_settings(settings_path) != 0) {
         fprintf(stderr,"ERROR: There was an error writing the settings\n");
     }
@@ -287,8 +297,7 @@ int main(int argc, char **argv) {
 int read_settings(char *path) {
     FILE *fp = fopen(path, "r");
     if(fp == NULL) {
-        fp = fopen(path, "w");
-        fclose(fp);
+        write_settings(path);
         fp = fopen(path, "r");
         if(fp == NULL) return 1;
     }
@@ -321,6 +330,18 @@ int read_settings(char *path) {
                     writemode = temp;
                 }
             }
+        } else if(strcmp(line, "DEFAULTCOIN:\n") == 0) {
+            if(fgets(line, 1000, fp) == NULL) {
+                fclose(fp);
+                return 1;
+            } else {
+                char temp[1000];
+                if(sscanf(line, "%s", temp) != 1){
+                    fprintf(stderr, "error reading default coin\n");
+                } else {
+                    defaultcoin = strdup(temp);
+                }
+            }
         }
     }
     fclose(fp);
@@ -332,5 +353,6 @@ int write_settings(char *path) {
 
     fprintf(fp, "CURRENCY:\n%s\n",currency);
     fprintf(fp, "WRITEMODE:\n%d\n",writemode);
+    fprintf(fp, "DEFAULTCOIN:\n%s\n",defaultcoin);
     fclose(fp);
 }
