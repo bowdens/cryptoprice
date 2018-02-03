@@ -19,6 +19,7 @@ const int maxwritemode = 1;
 const char *argp_program_bug_address = "@bowdens [github]";
 const char *argp_program_version = "cryptoprice 0.1";
 
+int parsed_args = 0;
 
 void copy_to_lower(char *str, char *tocopy) {
     free(str);
@@ -209,18 +210,23 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
     switch(key){
         case 'e':
             get_price("ethereum", currency);
+            parsed_args++;
             break;
         case 'b':
             get_price("bitcoin", currency);
+            parsed_args++;
             break;
         case 'l':
             get_price("litecoin", currency);
+            parsed_args++;
             break;
         case 'i':
             get_price("iota", currency);
+            parsed_args++;
             break;
         case 'o':
             get_price(arg, currency);
+            parsed_args++;
             break;
         case 777:
             free(currency);
@@ -230,12 +236,15 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
             }
             copy_to_lower(currency_lower, currency);
             write_settings(settings_path);
+            parsed_args++;
             break;
         case 888:
             printf("%s\n",currency);
+            parsed_args++;
             break;
         case 999:
             set_writemode(arg);
+            parsed_args++;
             break;
         case 1000:
             if(writemode >= 0 && writemode <= maxwritemode){
@@ -245,20 +254,24 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
                 write_settings(settings_path);
                 parse_opt(1000, arg, state);
             }
+            parsed_args++;
             break;
         case 1001:
             free(defaultcoin);
             defaultcoin = strdup(arg);
             write_settings(settings_path);
+            parsed_args++;
             break;
         case 1002:
             printf("%s\n",defaultcoin);
+            parsed_args++;
             break;
         case ARGP_KEY_ARG:
             get_price(arg, currency);
+            parsed_args++;
             break;
         case ARGP_KEY_NO_ARGS:
-            if(arg == NULL) get_price(defaultcoin,currency);
+            if(parsed_args==0) get_price(defaultcoin,currency);
             break;
     };
     return 0;
