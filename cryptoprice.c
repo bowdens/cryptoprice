@@ -18,7 +18,7 @@ int writemode = 0;
 const char *writemodes[] = { "humanreadable", "simple", "change", "24hchange" };
 const int maxwritemode = 3;
 
-const char *argp_program_bug_address = "@bowdens [github]";
+const char *argp_program_bug_address = "@bowdens";
 const char *argp_program_version = "cryptoprice 0.1";
 
 int parsed_args = 0;
@@ -250,7 +250,7 @@ int get_price(char *coin, char *curr){
     int err = print_price(chunk.memory, coin);
     if(err == 1){
         fprintf(stderr, "There was an error parsing the api response\n");
-    }else if(err == 2){
+    }else if(err == 2 && res == CURLE_OK){
         fprintf(stderr, "Error in api response. Either the resource is not available, or the coin '%s' is not listed\n",coin);
     }
 
@@ -356,7 +356,6 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
 }
 
 struct argp_option options[] = {
-    { 0, 0, 0, 0, "Default Settings", 0 },
     { 0, 0, 0, 0, "Currency", 2 },
     { "currency", 'c', "CURRENCY", 0, "change the default currency" },
     { "cc", 888, 0, 0, "check the current currency" },
