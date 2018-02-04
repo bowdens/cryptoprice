@@ -349,7 +349,19 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
             break;
         case 1003:
             //purge saved prices
-            remove(price_path);
+            printf("Warning this will removed all saved price history. Are you sure you want to continue? Y/N\n");
+            char line[128];
+            scanf("%s", line);
+            if(line[0] == 'Y' || line[0] == 'y'){
+                int res = remove(price_path);
+                if(res == 0){
+                    printf("Successfully purged prices\n");
+                } else {
+                    printf("Could not purge prices. (Error removing file: %d)\n",res);
+                }
+            } else {
+                printf("Did not purge historical prices\n");
+            }
             parsed_args++;
             break;
         case ARGP_KEY_ARG:
