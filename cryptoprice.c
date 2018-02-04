@@ -4,11 +4,16 @@
 #include <argp.h>
 #include <time.h>
 #include <curl/curl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define PRICELEN 8
 
-const char *settings_path = ".cryptoprice_settings";
-const char *price_path = ".cryptoprice_prices";
+char dir_path[PATH_MAX];
+char settings_path[PATH_MAX];
+char price_path[PATH_MAX];
+
+void init_paths();
 
 char *currency = "USD";
 char *currency_lower = "usd";
@@ -178,7 +183,7 @@ int print_price(char *json, char *coin){
             printf("1 %s = %.2lf %s, as of %s.", symb, price, found_curr?currency:"USD", strdatenow);
 
             LastPrice *lp = NULL;
-            lp = read_price(symb, found_curr?currency:"USD");
+            lp = read_price(coin, found_curr?currency:"USD");
             if(lp){
                 double change = price/lp->price * 100.0 - 100;
                 if(change < 0) change = -change;
@@ -198,7 +203,7 @@ int print_price(char *json, char *coin){
             break;
     }
 
-    write_price(symb, found_curr?currency:"USD", price, lastdate);
+    write_price(coin, found_curr?currency:"USD", price, lastdate);
 
     return 0;
 }
@@ -263,12 +268,12 @@ int get_price(char *coin, char *curr){
     return 0;
 }
 
-void set_writemode(char *_writemode){
+int set_writemode(char *_writemode){
     for(int i = 0; i <= maxwritemode; i++) {
         if(strcmp(_writemode, writemodes[i]) == 0){
             writemode = i;
             write_settings(settings_path);
-            return;
+            return 0;
         }
     }
     fprintf(stderr,"Error: \"%s\" is not a valid writemode\n",_writemode);
@@ -278,6 +283,7 @@ void set_writemode(char *_writemode){
         if(i != maxwritemode) printf(", ");
         else printf("\n");
     }
+    return 1;
 }
 
 static int parse_opt(int key, char *arg, struct argp_state *state) {
@@ -299,11 +305,12 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
             printf("%s\n",currency);
             parsed_args++;
             break;
-        case 'w':
+        case 'w': {
             //set writemode
-            set_writemode(arg);
-            //parsed_args++;
+            int res = set_writemode(arg);
+            if(res == 1) parsed_args++;
             break;
+            }
         case 1000:
             //check writemode
             if(writemode >= 0 && writemode <= maxwritemode){
@@ -375,7 +382,19 @@ struct argp argp = {
 };
 
 
+void init_paths(){
+    strncpy(dir_path, getenv("HOME"), PATH_MAX);
+    strncat(dir_path, "/.cryptoprice/",PATH_MAX);
+
+    strncpy(settings_path, dir_path, PATH_MAX);
+    strncat(settings_path, "settings", PATH_MAX);
+
+    strncpy(price_path, dir_path, PATH_MAX);
+    strncat(price_path, "prices", PATH_MAX);
+}
+
 int main(int argc, char **argv) {
+    init_paths();
     if(read_settings(settings_path) != 0) {
         fprintf(stderr,"ERROR: There was an error reading the settings file. Aborting\n");
         return 1;
@@ -388,6 +407,14 @@ int main(int argc, char **argv) {
 }
 
 int read_settings(const char *path) {
+    struct stat st = {0};
+    if(stat(dir_path, &st) == -1) {
+        int res = mkdir(dir_path, 0777);
+        if(res != 0){
+            fprintf(stderr, "ERROR: Could not create directory %s for settings\n", dir_path);
+            return 1;
+        }
+    }
     FILE *fp = fopen(path, "r");
     if(fp == NULL) {
         write_settings(path);
@@ -441,6 +468,14 @@ int read_settings(const char *path) {
 }
 
 int write_settings(const char *path) {
+    struct stat st = {0};
+    if(stat(dir_path, &st) == -1){
+        if( mkdir(dir_path, 0777) != 0){
+            fprintf(stderr, "ERROR: Could not create directory %s for settings\n",dir_path);
+            return 1;
+        }
+    }
+
     FILE *fp = fopen(path, "w");
     if(fp == NULL) return 1;
 
@@ -455,6 +490,13 @@ void price_warning(){
 }
 
 LastPrice *read_price(char *coin, char *curr){
+    struct stat st = {0};
+    if(stat(dir_path, &st) == -1){
+        int res = mkdir(dir_path, 0777);
+        if(res != 0){
+            printf("ERROR: Could not create directory %s for settings\n",dir_path);
+        }
+    }
     FILE *fp = fopen(price_path, "r");
     if(fp == NULL){
         //fprintf(stderr, "Warning: Could not find '%s', so attempting to create file\n",price_path);
@@ -536,6 +578,14 @@ LastPrice *read_price(char *coin, char *curr){
 }
 
 int write_price(char *coin, char *curr, double price, int date) {
+    struct stat st = {0};
+    if(stat(dir_path, &st) == -1){
+        int res = mkdir(dir_path, 0777);
+        if(res != 0){
+            fprintf(stderr,"ERROR: Could not create directory %s for settings\n",dir_path);
+            return 1;
+        }
+    }
     FILE *fp = fopen(price_path, "r");
     if(fp == NULL){
         fp = fopen(price_path, "w");
