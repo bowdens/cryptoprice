@@ -283,27 +283,7 @@ void set_writemode(char *_writemode){
 static int parse_opt(int key, char *arg, struct argp_state *state) {
     //printf("parse opt called (key = %d). state->arg_num = %d\n",key,state->arg_num);
     switch(key){
-        case 'e':
-            get_price("ethereum", currency);
-            parsed_args++;
-            break;
-        case 'b':
-            get_price("bitcoin", currency);
-            parsed_args++;
-            break;
-        case 'l':
-            get_price("litecoin", currency);
-            parsed_args++;
-            break;
-        case 'i':
-            get_price("iota", currency);
-            parsed_args++;
-            break;
-        case 'o':
-            get_price(arg, currency);
-            parsed_args++;
-            break;
-        case 777:
+        case 'c':
             //set currency
             free(currency);
             currency = strdup(arg);
@@ -319,7 +299,7 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
             printf("%s\n",currency);
             parsed_args++;
             break;
-        case 999:
+        case 'w':
             //set writemode
             set_writemode(arg);
             //parsed_args++;
@@ -335,7 +315,7 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
             }
             parsed_args++;
             break;
-        case 1001:
+        case 'd':
             //set default coin
             free(defaultcoin);
             defaultcoin = strdup(arg);
@@ -376,25 +356,23 @@ static int parse_opt(int key, char *arg, struct argp_state *state) {
 }
 
 struct argp_option options[] = {
-    { 0, 0, 0, 0, "Prices" },
-    { "eth", 'e', 0, 0, "check price of ethereum" },
-    { "btc", 'b', 0, 0, "check price of bitcoin" },
-    { "ltc", 'l', 0, 0, "check price of litecoin" },
-    { "iota", 'i', 0, 0, "check price of iota" },
-    { "coin", 'o', "COIN", 0, "check the price of another coin" },
-    { 0, 0, 0, 0, "Settings" },
-    { "currency", 777, "CURRENCY", 0, "change the default currency" },
+    { 0, 0, 0, 0, "Default Settings", 0 },
+    { 0, 0, 0, 0, "Currency", 2 },
+    { "currency", 'c', "CURRENCY", 0, "change the default currency" },
     { "cc", 888, 0, 0, "check the current currency" },
-    { "writemode", 999, "WRITEMODE", 0, "change the default writemode" },
+    { 0, 0, 0, 0, "Write Mode", 3},
+    { "writemode", 'w', "WRITEMODE", 0, "change the default writemode" },
     { "cwm", 1000, 0, 0, "check the current writemode" },
-    { "defaultcoin", 1001, "COIN", 0, "change the default coin (displayed when no arguments are given)" },
+    { 0, 0, 0, 0, "Cryptocurrency", 4},
+    { "defaultcoin", 'd', "COIN", 0, "change the default coin (displayed when no arguments are given)" },
     { "cdc", 1002, 0, 0, "check the default coin" },
+    { 0, 0, 0, 0, "Other options", -1},
     { "purgeprices", 1003, 0, 0, "deletes all saved historical prices" },
     { 0 }
 };
 
 struct argp argp = {
-    options, parse_opt, 0, "gets the price for a number of cryptocurrencies."
+    options, parse_opt, "[CRYTPO...]", "gets the price for a number of cryptocurrencies."
 };
 
 
